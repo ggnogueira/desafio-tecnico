@@ -1,0 +1,62 @@
+version: "3.1"
+services:
+  airflow:
+    hostname: airflow
+    container_name: airflow
+    build: .
+    command: airflow standalone
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./jobs:/opt/airflow/jobs
+      - ./plugins:/opt/airflow/plugins
+      - ./requirements.txt:/opt/airflow/requirements.txt
+
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW_HOME=/opt/airflow
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.session
+      - _AIRFLOW_DB_MIGRATE=true
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_PASSWORD=maues0123
+      - AIRFLOW_CONN_SPARK_DEFAULT={"conn_type":"spark","description":"","login":"","password":"admin","host":"spark://spark:7077","port":null,"schema":"","extra":""}
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    env_file:
+      - ../.env.dev
+    ports:
+      - "${AIRFLOW_PORT}:8080"
+    networks:
+      - dev-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - dev-env
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+networks:
+  dev-env:
+    external: true

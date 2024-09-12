@@ -1,0 +1,50 @@
+version: "3.1"
+services:
+  minio:
+    hostname: minio
+    container_name: minio
+    image: quay.io/minio/minio
+    command: server /data --console-address ':9001' --address ':9000'
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    networks:
+      - dev-env
+    volumes:
+      - ./data:/data
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  create-buckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY};
+      /usr/bin/mc mb myminio/bixlake-raw;
+      /usr/bin/mc mb myminio/bixlake-stage;
+      /usr/bin/mc mb myminio/bixlake-analytics;
+      exit 0;
+      "
+    networks:
+      - dev-env
+networks:
+  dev-env:
+    external: true

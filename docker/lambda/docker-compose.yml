@@ -1,0 +1,23 @@
+version: "3.1"
+services:
+  lambda:
+    hostname: lambda
+    container_name: lambda
+    build: .
+    env_file:
+      - ../.env.dev
+    volumes:
+      - ./lambda_function.py:/var/task/lambda_function.py
+      - ../crawler-api:/var/task/crawlers/crawler-api
+      - ../crawler-object-storage:/var/task/crawlers/crawler-object-storage
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4g
+    networks:
+      - dev-env
+    restart: always
+networks:
+  dev-env:
+    external: true
